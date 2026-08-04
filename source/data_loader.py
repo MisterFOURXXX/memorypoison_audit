@@ -12,6 +12,9 @@ class HotpotQALoader:
         self.train_file = os.path.join(data_dir, "hotpot_train_v1.1.json")
 
     def _extract_sentences_from_context(self, context):
+        """Extract all sentences from HotpotQA context list.
+        Each context entry: [title, [sent1, sent2, ...]].
+        """
         sentences = []
         for paragraph in context:
             if isinstance(paragraph, list) and len(paragraph) >= 2:
@@ -100,13 +103,12 @@ class LongMemEvalLoader:
             return data
         except FileNotFoundError:
             print(f"LongMemEval file not found at {self.file}. Please run setup.sh first.")
-            print("Returning a synthetic fallback with two instances for leakage testing.")
+            print("Returning synthetic fallback with two instances for leakage testing.")
             return self._synthetic_instances()
 
     def get_two_sessions_for_leakage(self):
         instances = self.load_instances()
         if len(instances) >= 2:
-            import random
             random.seed(42)
             chosen = random.sample(instances, 2)
             return chosen[0], chosen[1]
@@ -115,7 +117,6 @@ class LongMemEvalLoader:
             return self._synthetic_fallback()
 
     def _synthetic_instances(self) -> List[Dict[str, Any]]:
-        # Return a list of two synthetic instances for fallback
         return [
             {
                 "question_id": "synth_A",

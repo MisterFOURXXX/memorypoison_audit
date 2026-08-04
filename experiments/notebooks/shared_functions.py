@@ -35,7 +35,6 @@ def set_seed(seed=42):
         torch.cuda.manual_seed_all(seed)
 
 def _convert_to_serializable(obj):
-    """Recursively convert numpy types to Python native types."""
     if isinstance(obj, dict):
         return {k: _convert_to_serializable(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
@@ -53,7 +52,6 @@ def _convert_to_serializable(obj):
 
 def save_metrics(notebook_name: str, metrics_dict: Dict[str, Any], data_source: str = "synthetic"):
     filepath = get_results_path(data_source) / f"{notebook_name}_metrics.json"
-    # Convert numpy types to Python natives
     serializable = _convert_to_serializable(metrics_dict)
     with open(filepath, "w") as f:
         json.dump(serializable, f, indent=4)
