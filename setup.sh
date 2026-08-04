@@ -1,4 +1,6 @@
 #!/bin/bash
+apt-get update && apt-get install -y ffmpeg
+
 set -e
 
 echo "Cloning HotpotQA dataset..."

@@ -1,6 +1,8 @@
-import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+repo_path =  ".."
+os.chdir(repo_path)                 # Move into the repo
+sys.path.insert(0, os.getcwd())     # Ensure the repo root is on sys.path
 
 import plotly.graph_objects as go
 import plotly.express as px
