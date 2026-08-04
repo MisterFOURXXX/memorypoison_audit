@@ -7,14 +7,17 @@ from datasets import load_dataset
 
 class HotpotQALoader:
     def __init__(self, data_dir: str = "datasets/hotpotqa"):
-        self.data_dir = data_dir
-        self.dev_file = os.path.join(data_dir, "hotpot_dev_fullwiki_v1.json")
-        self.train_file = os.path.join(data_dir, "hotpot_train_v1.1.json")
+        # Try both possible locations
+        if os.path.exists(data_dir):
+            self.data_dir = data_dir
+        elif os.path.exists("dataset/hotpotqa"):
+            self.data_dir = "dataset/hotpotqa"
+        else:
+            self.data_dir = data_dir  # fallback, will raise later
+        self.dev_file = os.path.join(self.data_dir, "hotpot_dev_fullwiki_v1.json")
+        self.train_file = os.path.join(self.data_dir, "hotpot_train_v1.1.json")
 
     def _extract_sentences_from_context(self, context):
-        """Extract all sentences from HotpotQA context list.
-        Each context entry: [title, [sent1, sent2, ...]].
-        """
         sentences = []
         for paragraph in context:
             if isinstance(paragraph, list) and len(paragraph) >= 2:
@@ -86,13 +89,24 @@ class HotpotQALoader:
 
 class LongMemEvalLoader:
     def __init__(self, data_dir: str = "datasets/longmemeval/data", version: str = "s"):
-        self.data_dir = data_dir
+        # Try both locations
+        possible_dirs = [data_dir, "dataset/longmemeval/data", "datasets/longmemeval/data"]
+        found_dir = None
+        for d in possible_dirs:
+            if os.path.exists(d):
+                found_dir = d
+                break
+        if found_dir is None:
+            print(f"Warning: LongMemEval data directory not found. Using {data_dir} as fallback.")
+            found_dir = data_dir
+        self.data_dir = found_dir
+
         if version == "oracle":
-            self.file = os.path.join(data_dir, "longmemeval_oracle.json")
+            self.file = os.path.join(self.data_dir, "longmemeval_oracle.json")
         elif version == "s":
-            self.file = os.path.join(data_dir, "longmemeval_s_cleaned.json")
+            self.file = os.path.join(self.data_dir, "longmemeval_s_cleaned.json")
         elif version == "m":
-            self.file = os.path.join(data_dir, "longmemeval_m_cleaned.json")
+            self.file = os.path.join(self.data_dir, "longmemeval_m_cleaned.json")
         else:
             raise ValueError("version must be 'oracle', 's', or 'm'")
 
@@ -102,7 +116,7 @@ class LongMemEvalLoader:
                 data = json.load(f)
             return data
         except FileNotFoundError:
-            print(f"LongMemEval file not found at {self.file}. Please run setup.sh first.")
+            print(f"LongMemEval file not found at {self.file}. Please run setup.sh or download manually.")
             print("Returning synthetic fallback with two instances for leakage testing.")
             return self._synthetic_instances()
 

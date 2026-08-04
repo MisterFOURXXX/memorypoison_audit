@@ -5,6 +5,8 @@ apt-get update && apt-get install -y ffmpeg
 
 set -e
 
+cd /kaggle/working/memorypoison_audit/dataset
+
 echo "Cloning HotpotQA dataset..."
 git clone https://github.com/hotpotqa/hotpot || echo "HotpotQA already exists."
 
