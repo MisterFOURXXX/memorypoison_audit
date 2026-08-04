@@ -39,10 +39,38 @@ def set_seed(seed=42):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-def save_metrics(notebook_name, metrics_dict, data_source="synthetic"):
-    filepath = get_results_path(data_source) / f"{notebook_name}_metrics.json"
+import json
+import numpy as np
+from pathlib import Path
+
+def convert_to_serializable(obj):
+    """Recursively convert numpy types to Python native types."""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_serializable(item) for item in obj]
+    else:
+        return obj
+
+def save_metrics(notebook_name, metrics_dict, data_source=None):
+    """Save metrics with automatic numpy conversion."""
+    # Convert any numpy types to native Python types
+    serializable_dict = convert_to_serializable(metrics_dict)
+    
+    results_path = Path("experiments/results")
+    if data_source:
+        results_path = results_path / data_source
+    results_path.mkdir(parents=True, exist_ok=True)
+    
+    filepath = results_path / f"{notebook_name}_metrics.json"
     with open(filepath, "w") as f:
-        json.dump(metrics_dict, f, indent=4)
+        json.dump(serializable_dict, f, indent=4)
     print(f"Metrics saved to {filepath}")
 
 def load_metrics(notebook_name, data_source="synthetic"):
