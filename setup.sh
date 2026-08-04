@@ -2,10 +2,10 @@
 set -e
 
 echo "Cloning HotpotQA dataset..."
-git clone https://github.com/hotpotqa/hotpot.git datasets/hotpotqa || echo "HotpotQA already exists."
+git clone https://github.com/hotpotqa/hotpot || echo "HotpotQA already exists."
 
 echo "Cloning LongMemEval dataset..."
-git clone https://github.com/salesforce/LongMemEval.git datasets/longmemeval || echo "LongMemEval already exists."
+git clone https://github.com/xiaowu0162/LongMemEval || echo "LongMemEval already exists."
 
 echo "Dataset setup complete."
 
