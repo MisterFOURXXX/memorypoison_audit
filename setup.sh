@@ -19,7 +19,11 @@ pip install torch==2.9.0 torchvision==0.24.0 torchaudio==2.9.0 --index-url https
 # Python packages
 pip install -r requirements.txt
 
+pip uninstall -y sentence-transformers huggingface_hub torchcodec
+
+pip install --upgrade sentence-transformers huggingface_hub datasets chromadb scikit-learn
+
 # Upgrade Python packages
-pip install --upgrade sentence-transformers huggingface_hub datasets chromadb scikit-learn numpy pandas plotly umap-learn pyyaml tqdm seaborn matplotlib
+# pip install --upgrade sentence-transformers huggingface_hub datasets chromadb scikit-learn numpy pandas plotly umap-learn pyyaml tqdm seaborn matplotlib
 
 echo "Environment setup complete!"
