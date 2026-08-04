@@ -15,7 +15,6 @@ RESULTS_PATH.mkdir(parents=True, exist_ok=True)
 FIGURES_PATH.mkdir(parents=True, exist_ok=True)
 
 def get_results_path(data_source: str = "synthetic") -> Path:
-    """Return the results subdirectory for a given data source."""
     subdir = RESULTS_PATH / data_source
     subdir.mkdir(parents=True, exist_ok=True)
     return subdir

@@ -1,5 +1,9 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from typing import List, Dict, Any, Optional
-from .memory_store import MemoryStore
+from memorypoison_audit.source.core.memory_store import MemoryStore
 from memorypoison_audit.source.attacks.trigger_injector import TriggerInjector
 from memorypoison_audit.source.mitigation.sanitization_hooks import SanitizationHooks
 

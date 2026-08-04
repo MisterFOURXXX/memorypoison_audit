@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from typing import List, Dict, Any, Optional
 from memorypoison_audit.source.auditing.anomaly_scorer import AnomalyScorer
 

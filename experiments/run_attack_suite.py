@@ -8,12 +8,12 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from memorypoison_audit.core.agent_orchestrator import AgentOrchestrator
-from memorypoison_audit.mitigation.sanitization_hooks import SanitizationHooks
-from memorypoison_audit.attacks.gradient_free_perturber import GradientFreePerturber
-from memorypoison_audit.attacks.leakage_probe import LeakageProbe
-from memorypoison_audit.benchmarks.metrics import MetricsCalculator
-from memorypoison_audit.data_loader import HotpotQALoader, LongMemEvalLoader, SyntheticDataGenerator
+from memorypoison_audit.source.core.agent_orchestrator import AgentOrchestrator
+from memorypoison_audit.source.mitigation.sanitization_hooks import SanitizationHooks
+from memorypoison_audit.source.attacks.gradient_free_perturber import GradientFreePerturber
+from memorypoison_audit.source.attacks.leakage_probe import LeakageProbe
+from memorypoison_audit.source.benchmarks.metrics import MetricsCalculator
+from memorypoison_audit.source.data_loader import HotpotQALoader, LongMemEvalLoader, SyntheticDataGenerator
 
 def load_configs():
     with open('configs/attack_config.yaml', 'r') as f:
@@ -23,10 +23,6 @@ def load_configs():
     return attack_cfg, sanitizer_cfg
 
 def run_asr_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
-    """
-    Track A: ASR experiment with given data source.
-    data_source: 'synthetic', 'hotpot'
-    """
     print(f"Running ASR Experiment on {data_source} data...")
     session_id = "asr_test"
     sanitizer_hooks = SanitizationHooks(
@@ -35,14 +31,17 @@ def run_asr_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
     )
     agent = AgentOrchestrator(session_id, attack_cfg, sanitization_hooks=sanitizer_hooks)
 
-    # Populate benign facts
     if data_source == "hotpot":
         loader = HotpotQALoader()
         data = loader.load_dev()
-        for item in data[:100]:
-            context_text = " ".join(item.get("context", [""]))
-            if context_text:
-                agent.memory_store.add_fact(session_id, context_text)
+        # For ASR, we use the context sentences as benign facts
+        all_sentences = []
+        for item in data:
+            all_sentences.extend(item.get("context_sentences", []))
+        # Limit to reasonable number
+        for fact in all_sentences[:500]:
+            if fact.strip():
+                agent.memory_store.add_fact(session_id, fact)
     else:  # synthetic
         gen = SyntheticDataGenerator()
         facts = gen.generate_facts(num_facts=500)
@@ -75,10 +74,6 @@ def run_asr_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
     print(f"ASR complete. Saved to {out_dir}/asr_curve.csv")
 
 def run_leakage_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
-    """
-    Track B: Cross‑session leakage experiment.
-    data_source: 'synthetic', 'longmemeval'
-    """
     print(f"Running Leakage Experiment on {data_source} data...")
     from memorypoison_audit.core.memory_store import MemoryStore
     store = MemoryStore()
@@ -86,20 +81,20 @@ def run_leakage_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
     session_b = "user_b"
 
     if data_source == "longmemeval":
-        loader = LongMemEvalLoader()
-        sessions = loader.load_sessions()
-        if len(sessions) >= 2:
-            for turn in sessions[0].get("turns", []):
-                store.add_fact(session_a, turn.get("user", ""))
-            for turn in sessions[1].get("turns", []):
-                store.add_fact(session_b, turn.get("user", ""))
-            secret = sessions[0].get("turns", [{"user": "My API key is sk-12345"}])[0].get("user", "")
-        else:
-            # fallback to synthetic
-            print("LongMemEval sessions insufficient; using synthetic fallback.")
-            secret = "My personal API key is sk-abc123xyz"
-            store.add_fact(session_a, secret)
-            store.add_fact(session_b, "Some benign text.")
+        loader = LongMemEvalLoader(version="s")  # use the small version for speed
+        inst_a, inst_b = loader.get_two_sessions_for_leakage()
+        # For leakage, we need to add some facts from each instance's haystack_sessions.
+        # We'll add all user and assistant messages from the sessions.
+        def add_sessions_to_store(instance, session_id):
+            for session in instance.get("haystack_sessions", []):
+                for turn in session:
+                    if "content" in turn:
+                        store.add_fact(session_id, turn["content"])
+        add_sessions_to_store(inst_a, session_a)
+        add_sessions_to_store(inst_b, session_b)
+        # The secret is the question from instance A? Actually we want to see if B can retrieve A's secret.
+        # We can use the answer of instance A as secret.
+        secret = inst_a.get("answer", "My API key is sk-12345")
     else:  # synthetic
         secret = "My personal API key is sk-abc123xyz"
         store.add_fact(session_a, secret)
@@ -117,10 +112,6 @@ def run_leakage_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
     print(f"Leakage experiment complete. Saved to {out_dir}/leakage_results.json")
 
 def run_accuracy_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
-    """
-    Track C: RAG accuracy benchmark.
-    data_source: 'synthetic', 'hotpot'
-    """
     print(f"Running RAG Accuracy Benchmark on {data_source} data...")
     session_id = "accuracy_test"
     sanitizer_hooks = SanitizationHooks(
@@ -132,13 +123,15 @@ def run_accuracy_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
     if data_source == "hotpot":
         loader = HotpotQALoader()
         data = loader.load_dev()
+        # Use the first 50 items as QA pairs
         qa_pairs = data[:50]
-        # Populate memory with context
+        # Populate memory with context sentences from all items (or a subset)
+        all_sentences = []
         for item in qa_pairs:
-            context = " ".join(item.get("context", []))
-            if context:
-                agent.memory_store.add_fact(session_id, context)
-        # Use the questions and answers from the dataset
+            all_sentences.extend(item.get("context_sentences", []))
+        for fact in all_sentences[:300]:
+            if fact.strip():
+                agent.memory_store.add_fact(session_id, fact)
         questions = [item["question"] for item in qa_pairs]
         ground_truth = [item["answer"] for item in qa_pairs]
     else:  # synthetic
@@ -146,7 +139,6 @@ def run_accuracy_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
         facts = gen.generate_facts(num_facts=100)
         for fact in facts:
             agent.memory_store.add_fact(session_id, fact)
-        # Generate synthetic QA pairs (based on the facts)
         qa_pairs = gen.generate_qa_pairs(num_pairs=50)
         questions = [item["question"] for item in qa_pairs]
         ground_truth = [item["answer"] for item in qa_pairs]
@@ -178,16 +170,16 @@ def run_accuracy_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic"):
 def main_experiments():
     attack_cfg, sanitizer_cfg = load_configs()
 
-    # Experiment 1: Controlled Synthetic (proves mechanism)
+    # Experiment 1: Controlled Synthetic
     run_asr_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic")
     run_leakage_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic")
     run_accuracy_experiment(attack_cfg, sanitizer_cfg, data_source="synthetic")
 
-    # Experiment 2: Real-World HotpotQA (ASR & Accuracy)
+    # Experiment 2: Real-World HotpotQA
     run_asr_experiment(attack_cfg, sanitizer_cfg, data_source="hotpot")
     run_accuracy_experiment(attack_cfg, sanitizer_cfg, data_source="hotpot")
 
-    # Experiment 3: Real-World LongMemEval (Leakage)
+    # Experiment 3: Real-World LongMemEval
     run_leakage_experiment(attack_cfg, sanitizer_cfg, data_source="longmemeval")
 
     print("All experiments finished. Results saved in experiments/results/{data_source}/.")
