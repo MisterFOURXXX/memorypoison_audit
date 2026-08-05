@@ -4,17 +4,6 @@ apt-get update -qq && apt-get install -y libaio-dev -qq
 apt-get update && apt-get install -y ffmpeg
 
 set -e
-
-cd /kaggle/working/memorypoison_audit/dataset
-
-echo "Cloning HotpotQA dataset..."
-git clone https://github.com/hotpotqa/hotpot || echo "HotpotQA already exists."
-
-echo "Cloning LongMemEval dataset..."
-git clone https://github.com/xiaowu0162/LongMemEval || echo "LongMemEval already exists."
-
-echo "Dataset setup complete."
-
 # PyTorch with CUDA
 pip install torch==2.9.0 torchvision==0.24.0 torchaudio==2.9.0 --index-url https://download.pytorch.org/whl/cu128
 
@@ -29,3 +18,16 @@ pip install --upgrade sentence-transformers huggingface_hub datasets chromadb sc
 # pip install --upgrade sentence-transformers huggingface_hub datasets chromadb scikit-learn numpy pandas plotly umap-learn pyyaml tqdm seaborn matplotlib
 
 echo "Environment setup complete!"
+
+cd /kaggle/working/memorypoison_audit/datasets
+
+echo "Downloading HotpotQA fullwiki dev set..."
+wget -nc http://curtis.ml.cmu.edu/datasets/hotpot/hotpot_dev_fullwiki_v1.json -P hotpotqa/
+wget -nc http://curtis.ml.cmu.edu/datasets/hotpot/hotpot_train_v1.1.json -P hotpotqa/
+
+echo "Downloading LongMemEval cleaned data from HuggingFace..."
+wget -nc https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_oracle.json -P longmemeval/data/
+wget -nc https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_s_cleaned.json -P longmemeval/data/
+wget -nc https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_m_cleaned.json -P longmemeval/data/
+
+echo "Dataset setup complete."
