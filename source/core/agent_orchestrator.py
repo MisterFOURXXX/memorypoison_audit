@@ -18,7 +18,6 @@ class AgentOrchestrator:
         self.turn_counter = 0
         self.sanitization_hooks = sanitization_hooks if sanitization_hooks else SanitizationHooks(enabled=False)
         self.trigger_injector = TriggerInjector()
-        self.attack_active = False
 
     def add_to_short_term(self, user_input: str, agent_response: str):
         self.short_term_memory.append({"user": user_input, "agent": agent_response})

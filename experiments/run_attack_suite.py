@@ -15,8 +15,7 @@ from memorypoison_audit.source.mitigation.sanitization_hooks import Sanitization
 from memorypoison_audit.source.attacks.gradient_free_perturber import GradientFreePerturber
 from memorypoison_audit.source.attacks.leakage_probe import LeakageProbe
 from memorypoison_audit.source.benchmarks.metrics import MetricsCalculator
-from memorypoison_audit.source.data_loader import HotpotQALoader, LongMemEvalLoader, SyntheticDataGenerator
-
+from memorypoison_audit.source.data_loader import LongMemEvalLoader
 def load_configs():
     with open('configs/attack_config.yaml', 'r') as f:
         attack_cfg = yaml.safe_load(f)
@@ -24,19 +23,21 @@ def load_configs():
         sanitizer_cfg = yaml.safe_load(f)
     return attack_cfg, sanitizer_cfg
 
-def get_all_user_messages(instance):
+def get_user_messages(instance):
     msgs = []
     for session in instance.get("haystack_sessions", []):
         for turn in session:
             if turn.get("role") == "user":
-                msgs.append(turn.get("content", ""))
+                content = turn.get("content", "")
+                if content:
+                    msgs.append(content)
     return msgs
 
 def run_asr_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
     print(f"Running ASR Experiment on LongMemEval ({split})...")
     loader = LongMemEvalLoader(split=split)
     instances = loader.load_instances()
-    if len(instances) < 2:
+    if len(instances) < 10:
         print("Not enough instances; using synthetic fallback.")
         return
 
@@ -49,7 +50,7 @@ def run_asr_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
 
     # Use first 100 instances as benign facts (user messages)
     for inst in instances[:100]:
-        for msg in get_all_user_messages(inst):
+        for msg in get_user_messages(inst):
             if msg:
                 agent.memory_store.add_fact(session_id, msg)
 
@@ -80,7 +81,7 @@ def run_asr_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
 
 def run_leakage_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
     print(f"Running Leakage Experiment on LongMemEval ({split})...")
-    from memorypoison_audit.core.memory_store import MemoryStore
+    from source.core.memory_store import MemoryStore
     store = MemoryStore()
     session_a = "user_a"
     session_b = "user_b"
@@ -90,8 +91,8 @@ def run_leakage_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
     if len(instances) >= 2:
         inst_a = instances[0]
         inst_b = instances[1]
-        user_msgs_a = get_all_user_messages(inst_a)
-        user_msgs_b = get_all_user_messages(inst_b)
+        user_msgs_a = get_user_messages(inst_a)
+        user_msgs_b = get_user_messages(inst_b)
         if user_msgs_a:
             for msg in user_msgs_a:
                 store.add_fact(session_a, msg)
@@ -124,7 +125,7 @@ def run_accuracy_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
     print(f"Running RAG Accuracy Benchmark on LongMemEval ({split})...")
     loader = LongMemEvalLoader(split=split)
     instances = loader.load_instances()
-    if len(instances) < 10:
+    if len(instances) < 20:
         print("Not enough instances; using synthetic fallback.")
         return
 
@@ -135,13 +136,13 @@ def run_accuracy_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
     )
     agent = AgentOrchestrator(session_id, attack_cfg, sanitization_hooks=sanitizer_hooks)
 
-    # Use first 50 instances as context
+    # Use first 50 instances as context (user messages)
     for inst in instances[:50]:
-        for msg in get_all_user_messages(inst):
+        for msg in get_user_messages(inst):
             if msg:
                 agent.memory_store.add_fact(session_id, msg)
 
-    # Use next 50 as QA pairs (question = instance question, answer = instance answer)
+    # Use next 50 instances as QA pairs (question + answer)
     qa_instances = instances[50:100]
     f1_scores = []
     hit_rates = []
@@ -149,10 +150,7 @@ def run_accuracy_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
         question = inst.get("question", "")
         true_answer = inst.get("answer", "")
         retrieved = agent.memory_store.query(session_id, question, top_k=1)
-        if retrieved:
-            pred_text = retrieved[0]['text']
-        else:
-            pred_text = ""
+        pred_text = retrieved[0]['text'] if retrieved else ""
         f1 = MetricsCalculator.f1_score_lists(pred_text, true_answer)
         f1_scores.append(f1)
         hit = MetricsCalculator.rag_hit_rate([pred_text], [true_answer])
@@ -171,7 +169,7 @@ def run_accuracy_experiment(attack_cfg, sanitizer_cfg, split="s_cleaned"):
 
 def main_experiments():
     attack_cfg, sanitizer_cfg = load_configs()
-    split = "s_cleaned"  # can be changed to "oracle" or "m_cleaned"
+    split = "s_cleaned"
     run_asr_experiment(attack_cfg, sanitizer_cfg, split=split)
     run_leakage_experiment(attack_cfg, sanitizer_cfg, split=split)
     run_accuracy_experiment(attack_cfg, sanitizer_cfg, split=split)
