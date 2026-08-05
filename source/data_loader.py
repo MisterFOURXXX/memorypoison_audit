@@ -7,7 +7,7 @@ class LongMemEvalLoader:
     Loads LongMemEval from local JSON files (downloaded via setup.sh).
     Available splits: 'oracle', 's_cleaned', 'm_cleaned'.
     """
-    def __init__(self, data_dir: str = "datasets/longmemeval/data", split: str = "s_cleaned"):
+    def __init__(self, data_dir: str = "/kaggle/working/memorypoison_audit/datasets", split: str = "s_cleaned"):
         self.data_dir = data_dir
         self.split = split
         self._instances = None
@@ -42,26 +42,6 @@ class LongMemEvalLoader:
         from sklearn.model_selection import train_test_split
         train, test = train_test_split(instances, train_size=train_ratio, random_state=seed)
         return train, test
-
-    def _synthetic_fallback(self) -> List[Dict[str, Any]]:
-        return [
-            {
-                "question_id": "synth_1",
-                "question": "What is the API key?",
-                "answer": "sk-12345",
-                "haystack_sessions": [
-                    [{"role": "user", "content": "My API key is sk-12345"}]
-                ]
-            },
-            {
-                "question_id": "synth_2",
-                "question": "What is the master password?",
-                "answer": "admin123",
-                "haystack_sessions": [
-                    [{"role": "user", "content": "The master password is admin123"}]
-                ]
-            }
-        ]
 
     def get_all_user_messages(self, instance: Dict[str, Any]) -> List[str]:
         msgs = []
