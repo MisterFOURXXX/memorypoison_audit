@@ -34,21 +34,3 @@ class LongMemEvalLoader:
         from sklearn.model_selection import train_test_split
         train, test = train_test_split(instances, train_size=train_ratio, random_state=seed)
         return train, test
-
-    def _synthetic_fallback(self) -> List[Dict[str, Any]]:
-        return [
-            {
-                "question_id": "synth_1",
-                "haystack_sessions": [
-                    [{"role": "user", "content": "My API key is sk-12345"}]
-                ],
-                "answer": "sk-12345"
-            },
-            {
-                "question_id": "synth_2",
-                "haystack_sessions": [
-                    [{"role": "user", "content": "What is the key?"}]
-                ],
-                "answer": "sk-12345"
-            }
-        ]

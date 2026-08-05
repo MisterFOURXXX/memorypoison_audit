@@ -21,11 +21,7 @@ echo "Environment setup complete!"
 
 cd /kaggle/working/memorypoison_audit/datasets
 
-echo "Downloading HotpotQA fullwiki dev set..."
-wget -nc http://curtis.ml.cmu.edu/datasets/hotpot/hotpot_dev_fullwiki_v1.json -P hotpotqa/
-wget -nc http://curtis.ml.cmu.edu/datasets/hotpot/hotpot_train_v1.1.json -P hotpotqa/
-
-echo "Downloading LongMemEval cleaned data from HuggingFace..."
+echo "Downloading LongMemEval dataset from HuggingFace..."
 wget -nc https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_oracle.json -P longmemeval/data/
 wget -nc https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_s_cleaned.json -P longmemeval/data/
 wget -nc https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_m_cleaned.json -P longmemeval/data/
