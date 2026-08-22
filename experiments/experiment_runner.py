@@ -14,6 +14,7 @@ from memorypoison_audit.source.utils.data_loader import get_user_messages, get_a
 from memorypoison_audit.source.utils.llm_utils import LLM_TYPE
 from memorypoison_audit.source.attacks.malicious_generator import MaliciousTextGenerator
 
+
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
@@ -69,6 +70,7 @@ def run_asr_experiment(
         mal_texts = attack_cfg["malicious_texts"]
 
     # Add queries derived from malicious texts to the pool
+    # After building mal_texts
     if mal_texts:
         mal_queries = [llm_generate_query_func(mal) for mal in mal_texts]
         query_pool.extend(mal_queries * 3)
@@ -145,7 +147,12 @@ def run_leakage_experiment(
 
     store.add_fact(session_id, secret, metadata={"secret": True, "user": "A"})
 
-    probe = LeakageProbe(store, llm_func=llm_generate_text_func, llm_type=LLM_TYPE)
+    # Inside run_leakage_experiment, after creating store and before adding secret:
+    probe = LeakageProbe(
+        store,
+        llm_func=llm_generate_text_func,  # pass the text generation function
+        llm_type=LLM_TYPE                 # from llm_utils
+    )
     # We need to allow top_k in the probe; modify LeakageProbe.calculate_leakage_score to accept top_k.
     # For now, we'll just use the default top_k=5; we assume you have modified that method.
     # If not, we can pass top_k as an argument; we'll assume the method has been updated.
