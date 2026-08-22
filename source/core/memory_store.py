@@ -117,10 +117,14 @@ class MemoryStore:
             data = json.load(f)
         self.delete_collection(session_id)
         coll = self.get_collection(session_id)
-        coll.add(
-            ids=data["ids"],
-            embeddings=data["embeddings"],
-            documents=data["documents"],
-            metadatas=data["metadatas"],
-        )
+        total = len(data["ids"])
+        chunk_size = 800   # same as in add_facts_batch
+        for i in range(0, total, chunk_size):
+            end = min(i + chunk_size, total)
+            coll.add(
+                ids=data["ids"][i:end],
+                embeddings=data["embeddings"][i:end],
+                documents=data["documents"][i:end],
+                metadatas=data["metadatas"][i:end],
+            )
         return True
