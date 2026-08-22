@@ -3,6 +3,7 @@ import json
 import random
 import time
 import requests
+import logging
 from typing import List, Dict
 
 class LongMemEvalLoader:

@@ -30,6 +30,7 @@ def run_asr_experiment(
     shared_model: SentenceTransformer,
     verbose: bool = True,          # <-- added
 ) -> pd.DataFrame:
+    
     if verbose:
         print(f"\n=== ASR (sanitization={with_sanitization}, split={split_name}) ===")
     instances = instances_s if split_name == "s_cleaned" else instances_m
