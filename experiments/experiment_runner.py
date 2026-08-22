@@ -120,6 +120,7 @@ def run_leakage_experiment(
     num_background: int = 600,
     top_k: int = 5,
     verbose: bool = True,          # <-- added
+    llm_generate_text_func: Optional[Callable] = None,
 ) -> Tuple[float, Optional[float]]:
     if verbose:
         print(f"\n=== Leakage (rollback={with_rollback}, split={split_name}) ===")
@@ -144,7 +145,7 @@ def run_leakage_experiment(
 
     store.add_fact(session_id, secret, metadata={"secret": True, "user": "A"})
 
-    probe = LeakageProbe(store)
+    probe = LeakageProbe(store, llm_func=llm_generate_text_func, llm_type=LLM_TYPE)
     # We need to allow top_k in the probe; modify LeakageProbe.calculate_leakage_score to accept top_k.
     # For now, we'll just use the default top_k=5; we assume you have modified that method.
     # If not, we can pass top_k as an argument; we'll assume the method has been updated.
@@ -176,7 +177,6 @@ def run_accuracy_experiment(
     sanitizer_cfg: Dict,
     instances_oracle: List[Dict],
     llm_answer_func: Callable,
-    llm_generate_text_func: Callable,
     shared_model: SentenceTransformer,
     qa_top_k: int = 3,
     verbose: bool = True,          # <-- added

@@ -2,6 +2,9 @@ import os
 import torch
 import logging
 import warnings
+import os
+import secrets          # <-- added
+import string           # <-- added
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 from sentence_transformers import SentenceTransformer
 
@@ -12,13 +15,12 @@ os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 warnings.filterwarnings("ignore")
 
 # ---- Set Hugging Face token ----
-HF_TOKEN = os.environ.get("HF_TOKEN", "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")
+HF_TOKEN = os.environ.get("HF_TOKEN", "hf_token_placeholder")  # <-- replace with your actual token or set as env variable
 if HF_TOKEN:
     from huggingface_hub import login
     login(token=HF_TOKEN, add_to_git_credential=False)
 else:
     print("HF_TOKEN not set. You may see rate-limit warnings.")
-
 
 # ---- Global shared model ----
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -71,19 +73,25 @@ def llm_generate_query(context_snippet: str) -> str:
         return out.split("Query:")[-1].strip()[:60] or context_snippet[:40]
 
 def llm_generate_secret() -> str:
+    """
+    Generate a random fake API key (starts with 'sk-') using the LLM if possible,
+    otherwise a cryptographically secure random string.
+    """
+    # Try LLM first
     if LLM_TYPE == 'seq2seq':
         prompt = "Generate a fake API key starting with sk-:"
         key = llm_generate_text(prompt, max_new_tokens=16).strip()
         if key.startswith("sk-") and len(key) > 10:
             return key
-    else:
+    else:  # GPT-style
         prompt = "Generate a fake API key starting with sk-:\nKey:"
         out = llm_generate_text(prompt, max_new_tokens=16)
         key = out.split("Key:")[-1].strip()
         if key.startswith("sk-") and len(key) > 10:
             return key
-    # Fallback: random key
-    random_part = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(80))
+
+    # Fallback: generate a random key
+    random_part = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
     return f"sk-{random_part}"
 
 def llm_answer(question: str, context: str) -> str:
