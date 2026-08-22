@@ -1,0 +1,4 @@
+enabled: true
+method: "lof"
+n_neighbors: 15
+contamination: 0.15
