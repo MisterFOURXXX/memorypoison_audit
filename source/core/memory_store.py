@@ -8,7 +8,18 @@ from typing import List, Dict, Any, Optional
 class MemoryStore:
     def __init__(self, persist_dir: str = "./chroma_db", embedding_model=None):
         self.client = chromadb.PersistentClient(path=persist_dir)
-        self.embedding_model = embedding_model
+        if embedding_model is None:
+            # Lazy import to avoid circular dependencies
+            from ..utils.llm_utils import SHARED_MODEL
+            self.embedding_model = SHARED_MODEL
+        else:
+            # Validate that the model has an 'encode' method
+            if not hasattr(embedding_model, 'encode'):
+                raise TypeError(
+                    f"embedding_model must have an 'encode' method. "
+                    f"Got {type(embedding_model)} with attributes: {dir(embedding_model)}"
+                )
+            self.embedding_model = embedding_model
         self.collections: Dict[str, Any] = {}
 
     def get_collection(self, session_id: str):
@@ -52,7 +63,9 @@ class MemoryStore:
         q_emb = self.embedding_model.encode(
             [query_text], batch_size=32, show_progress_bar=False
         )[0].tolist()
-        n_results = min(top_k, max(1, collection.count()))
+        # Call count() to get the number of documents
+        count = collection.count()
+        n_results = min(top_k, max(1, count))
         res = collection.query(
             query_embeddings=[q_emb],
             n_results=n_results,
