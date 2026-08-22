@@ -2,9 +2,9 @@ import os
 import itertools
 import pandas as pd
 from tqdm import tqdm
-from memorypoison_audit.utils.data_loader import LongMemEvalLoader
-from memorypoison_audit.utils.llm_utils import SHARED_MODEL, llm_generate_query, llm_generate_text
-from experiments.experiment_runner import run_asr_experiment
+from memorypoison_audit.source.utils.data_loader import LongMemEvalLoader
+from memorypoison_audit.source.utils.llm_utils import SHARED_MODEL, llm_generate_query, llm_generate_text
+from memorypoison_audit.experiments.experiment_runner import run_asr_experiment
 
 # Load base instances (cached) – use smaller sample ratios for speed
 def load_data(sample_ratio_s=0.25, sample_ratio_m=0.25, sample_ratio_oracle=0.4):
@@ -66,6 +66,45 @@ sweeps = [
             "n_neighbors": 15,
         }
     },
+    {
+        "name": "injection_frequency",
+        "params": {
+            "injection_turns": [[5,10], [5,15,20], [5,10,15,20]],
+        },
+        "fixed": {
+            "perturbation_budget": 0.08,
+            "sanitization_method": "lof",
+            "contamination": 0.15,
+            "num_benign": 200,
+            "use_llm_generated": False,
+        }
+    },
+    {
+        "name": "num_benign_facts",
+        "params": {
+            "num_benign": [100, 500, 1000],
+        },
+        "fixed": {
+            "perturbation_budget": 0.08,
+            "sanitization_method": "lof",
+            "contamination": 0.15,
+            "injection_turns": [5,10,15,20],
+            "use_llm_generated": False,
+        }
+    },
+    {
+        "name": "query_pool_type",
+        "params": {
+            "query_pool_type": ["safety_only", "llm_only"],
+        },
+        "fixed": {
+            "perturbation_budget": 0.08,
+            "sanitization_method": "lof",
+            "contamination": 0.15,
+            "num_benign": 200,
+            "use_llm_generated": False,
+        }
+    },
 ]
 
 results = []
@@ -113,11 +152,11 @@ for sweep in sweeps:
         # Run ASR for s_cleaned (undefended and defended)
         df_undef = run_asr_experiment(
             False, "s_cleaned", attack_cfg, sanitizer_cfg,
-            instances_s, instances_m, llm_generate_query, llm_generate_text, SHARED_MODEL
+            instances_s, instances_m, llm_generate_query, llm_generate_text, SHARED_MODEL, verbose=False
         )
         df_def = run_asr_experiment(
             True, "s_cleaned", attack_cfg, sanitizer_cfg,
-            instances_s, instances_m, llm_generate_query, llm_generate_text, SHARED_MODEL
+            instances_s, instances_m, llm_generate_query, llm_generate_text, SHARED_MODEL, verbose=False
         )
 
         mean_asr_undef = df_undef['ASR'].mean()

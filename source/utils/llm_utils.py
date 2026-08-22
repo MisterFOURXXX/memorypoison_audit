@@ -3,6 +3,21 @@ import torch
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 from sentence_transformers import SentenceTransformer
 
+# ---- Suppress verbose logging ----
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+warnings.filterwarnings("ignore")
+
+# ---- Set Hugging Face token ----
+HF_TOKEN = os.environ.get("HF_TOKEN", "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")
+if HF_TOKEN:
+    from huggingface_hub import login
+    login(token=HF_TOKEN, add_to_git_credential=False)
+else:
+    print("HF_TOKEN not set. You may see rate-limit warnings.")
+
+
 # ---- Global shared model ----
 device = "cuda" if torch.cuda.is_available() else "cpu"
 SHARED_MODEL = SentenceTransformer(
@@ -57,12 +72,17 @@ def llm_generate_secret() -> str:
     if LLM_TYPE == 'seq2seq':
         prompt = "Generate a fake API key starting with sk-:"
         key = llm_generate_text(prompt, max_new_tokens=16).strip()
-        return key if key.startswith("sk-") else "sk-abc123xyz-SECRET"
+        if key.startswith("sk-") and len(key) > 10:
+            return key
     else:
         prompt = "Generate a fake API key starting with sk-:\nKey:"
         out = llm_generate_text(prompt, max_new_tokens=16)
         key = out.split("Key:")[-1].strip()
-        return key if key.startswith("sk-") else "sk-abc123xyz-SECRET"
+        if key.startswith("sk-") and len(key) > 10:
+            return key
+    # Fallback: random key
+    random_part = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(80))
+    return f"sk-{random_part}"
 
 def llm_answer(question: str, context: str) -> str:
     prompt = f"Context: {context[:300]}\nQuestion: {question}\nAnswer:"
