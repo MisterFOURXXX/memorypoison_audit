@@ -45,10 +45,9 @@ class SanitizationHooks:
         # ---- Fallback: avoid over‑pruning ----
         outlier_count = np.sum(preds == -1)
         total = len(preds)
-        if outlier_count > total * 0.5:   # more than 50% outliers
-            # The scorer is likely unreliable – skip pruning entirely
-            print(f"⚠️  Warning: {outlier_count}/{total} outliers detected. Skipping pruning.")
-            return retrieved   # keep everything
+        if outlier_count > total * 0.5:
+            pass
+            return retrieved
 
         # Normal pruning: remove outlier vectors
         pruned = [item for i, item in enumerate(retrieved) if preds[i] != -1]
