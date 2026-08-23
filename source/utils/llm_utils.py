@@ -15,7 +15,7 @@ os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 warnings.filterwarnings("ignore")
 
 # ---- Set Hugging Face token ----
-HF_TOKEN = os.environ.get("HF_TOKEN", "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")  # <-- replace with your actual token or set as env variable
+HF_TOKEN = os.environ.get("HF_TOKEN", "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")  # <-- replace with your actual token or set as env variable
 if HF_TOKEN:
     from huggingface_hub import login
     login(token=HF_TOKEN, add_to_git_credential=False)
