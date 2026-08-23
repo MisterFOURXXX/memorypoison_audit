@@ -1,3 +1,7 @@
+"""
+Ablation studies for Track A – ASR.
+All sweeps run on s_cleaned only.
+"""
 import os
 import itertools
 import pandas as pd
@@ -6,16 +10,13 @@ from memorypoison_audit.source.utils.data_loader import LongMemEvalLoader
 from memorypoison_audit.source.utils.llm_utils import SHARED_MODEL, llm_generate_query, llm_generate_text
 from memorypoison_audit.experiments.experiment_runner import run_asr_experiment
 
-# Load base instances (cached) – use smaller sample ratios for speed
-def load_data(sample_ratio_s=0.15, sample_ratio_m=0.15, sample_ratio_oracle=0.2):
+def load_data(sample_ratio_s=0.15):
     loader_s = LongMemEvalLoader(split="s_cleaned", sample_ratio=sample_ratio_s)
-    loader_m = LongMemEvalLoader(split="m_cleaned", sample_ratio=sample_ratio_m)
-    loader_oracle = LongMemEvalLoader(split="oracle", sample_ratio=sample_ratio_oracle)
-    return loader_s.load_instances(), loader_m.load_instances(), loader_oracle.load_instances()
+    return loader_s.load_instances()
 
-instances_s, instances_m, _ = load_data()  # oracle not needed for ASR sweeps
+instances = load_data()
 
-# Define ablation sweeps
+# Define sweeps
 sweeps = [
     {
         "name": "sanitization_method",
@@ -53,7 +54,6 @@ sweeps = [
             "use_llm_generated": False,
         }
     },
-    # Optionally add an ablation that compares fixed vs LLM-generated attacks
     {
         "name": "attack_generation",
         "params": {
@@ -118,7 +118,6 @@ for sweep in sweeps:
     for combo in tqdm(list(itertools.product(*param_values)), desc=f"Sweep {name}"):
         param_dict = dict(zip(param_keys, combo))
 
-        # Build attack_config
         attack_cfg = {
             "perturbation_budget": fixed.get("perturbation_budget", 0.08),
             "injection_turns": [5, 10, 15, 20],
@@ -149,14 +148,13 @@ for sweep in sweeps:
         if "contamination" in param_dict:
             sanitizer_cfg["contamination"] = param_dict["contamination"]
 
-        # Run ASR for s_cleaned (undefended and defended)
         df_undef = run_asr_experiment(
-            False, "s_cleaned", attack_cfg, sanitizer_cfg,
-            instances_s, instances_m, llm_generate_query, llm_generate_text, SHARED_MODEL, verbose=False
+            False, attack_cfg, sanitizer_cfg,
+            instances, llm_generate_query, llm_generate_text, SHARED_MODEL, verbose=False
         )
         df_def = run_asr_experiment(
-            True, "s_cleaned", attack_cfg, sanitizer_cfg,
-            instances_s, instances_m, llm_generate_query, llm_generate_text, SHARED_MODEL, verbose=False
+            True, attack_cfg, sanitizer_cfg,
+            instances, llm_generate_query, llm_generate_text, SHARED_MODEL, verbose=False
         )
 
         mean_asr_undef = df_undef['ASR'].mean()
@@ -172,7 +170,6 @@ for sweep in sweeps:
         }
         results.append(result)
 
-# Save results
 df_results = pd.DataFrame(results)
 os.makedirs("experiments/results/ablation", exist_ok=True)
 df_results.to_csv("experiments/results/ablation/ablation_results.csv", index=False)

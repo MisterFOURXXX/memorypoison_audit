@@ -3,7 +3,6 @@ import json
 import random
 import time
 import requests
-import logging
 from typing import List, Dict
 
 class LongMemEvalLoader:
@@ -27,17 +26,12 @@ class LongMemEvalLoader:
             os.remove(self.file)
         url = self.base_url + os.path.basename(self.file)
         print(f"Downloading {url} ...")
-        try:
-            response = requests.get(url, timeout=120, stream=True)
-            response.raise_for_status()
-            with open(self.file, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            print(f"Downloaded {os.path.basename(self.file)} ({os.path.getsize(self.file)} bytes)")
-        except Exception as e:
-            if os.path.exists(self.file):
-                os.remove(self.file)
-            raise RuntimeError(f"Download failed: {e}") from e
+        response = requests.get(url, timeout=120, stream=True)
+        response.raise_for_status()
+        with open(self.file, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print(f"Downloaded {os.path.basename(self.file)} ({os.path.getsize(self.file)} bytes)")
 
     def load_instances(self) -> List[Dict]:
         max_retries = 3

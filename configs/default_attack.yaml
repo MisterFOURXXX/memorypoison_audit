@@ -1,9 +1,0 @@
-attack_config = {
-    "perturbation_budget": 0.15,
-    "injection_turns": [3, 6, 9, 12, 15, 18, 21, 24, 27, 30],
-    "total_turns": 32,
-    "top_k": 10,
-    "num_benign": 200,
-    "use_llm_generated": True,
-    "num_malicious_generations": 10,
-}

@@ -4,6 +4,9 @@ from typing import Optional
 from ..core.memory_store import MemoryStore
 
 class GradientFreePerturber:
+    """
+    Applies gradient‑free perturbation to the embedding of a text and stores it.
+    """
     def __init__(self, budget: float = 0.08, model=None):
         self.budget = budget
         self.model = model

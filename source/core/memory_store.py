@@ -6,14 +6,16 @@ import numpy as np
 from typing import List, Dict, Any, Optional
 
 class MemoryStore:
+    """
+    Persistent vector store with session isolation, batch operations,
+    checkpointing, and embedding caching.
+    """
     def __init__(self, persist_dir: str = "./chroma_db", embedding_model=None):
         self.client = chromadb.PersistentClient(path=persist_dir)
         if embedding_model is None:
-            # Lazy import to avoid circular dependencies
             from ..utils.llm_utils import SHARED_MODEL
             self.embedding_model = SHARED_MODEL
         else:
-            # Validate that the model has an 'encode' method
             if not hasattr(embedding_model, 'encode'):
                 raise TypeError(
                     f"embedding_model must have an 'encode' method. "
@@ -63,7 +65,6 @@ class MemoryStore:
         q_emb = self.embedding_model.encode(
             [query_text], batch_size=32, show_progress_bar=False
         )[0].tolist()
-        # Call count() to get the number of documents
         count = collection.count()
         n_results = min(top_k, max(1, count))
         res = collection.query(
@@ -118,7 +119,7 @@ class MemoryStore:
         self.delete_collection(session_id)
         coll = self.get_collection(session_id)
         total = len(data["ids"])
-        chunk_size = 800   # same as in add_facts_batch
+        chunk_size = 800
         for i in range(0, total, chunk_size):
             end = min(i + chunk_size, total)
             coll.add(

@@ -1,8 +1,7 @@
 """
-Run ablation studies for Track B – Cross‑Session Context Leakage.
-Sweeps: rollback, background facts, and retrieval top_k.
+Ablation studies for Track B – Cross‑Session Context Leakage.
+All sweeps run on s_cleaned only.
 """
-
 import os
 import itertools
 import pandas as pd
@@ -11,23 +10,20 @@ from memorypoison_audit.source.utils.data_loader import LongMemEvalLoader
 from memorypoison_audit.source.utils.llm_utils import SHARED_MODEL, llm_generate_secret
 from memorypoison_audit.experiments.experiment_runner import run_leakage_experiment
 
-def load_data(sample_ratio_s=0.15, sample_ratio_m=0.15):
+def load_data(sample_ratio_s=0.15):
     loader_s = LongMemEvalLoader(split="s_cleaned", sample_ratio=sample_ratio_s)
-    loader_m = LongMemEvalLoader(split="m_cleaned", sample_ratio=sample_ratio_m)
-    return loader_s.load_instances(), loader_m.load_instances()
+    return loader_s.load_instances()
 
-instances_s, instances_m = load_data()
+instances = load_data()
 
-# Define sweeps – now with retrieval top_k and more background options
 sweeps = [
     {
         "name": "rollback_effectiveness",
         "params": {
             "with_rollback": [False, True],
-            "top_k": [3, 5, 10],          # retrieval depth
+            "top_k": [3, 5, 10],
         },
         "fixed": {
-            "split_name": "s_cleaned",
             "num_background": 600,
         }
     },
@@ -38,7 +34,6 @@ sweeps = [
             "top_k": [5, 10],
         },
         "fixed": {
-            "split_name": "s_cleaned",
             "with_rollback": False,
         }
     },
@@ -49,9 +44,7 @@ sweeps = [
             "num_background": [200, 600, 1000],
             "top_k": [5],
         },
-        "fixed": {
-            "split_name": "s_cleaned",
-        }
+        "fixed": {}
     },
 ]
 
@@ -68,20 +61,15 @@ for sweep in sweeps:
         run_cfg = {**fixed, **param_dict}
 
         with_rollback = run_cfg["with_rollback"]
-        split_name = run_cfg["split_name"]
         top_k = run_cfg["top_k"]
 
-        # Run leakage experiment (will need to accept top_k and num_background)
-        # Modify run_leakage_experiment to accept these optional args.
         score_before, score_after = run_leakage_experiment(
             with_rollback=with_rollback,
-            split_name=split_name,
-            instances_s=instances_s,
-            instances_m=instances_m,
+            instances=instances,
             llm_generate_secret_func=llm_generate_secret,
             shared_model=SHARED_MODEL,
             num_background=run_cfg["num_background"],
-            top_k=top_k,   # passed to LeakageProbe queries
+            top_k=top_k,
             verbose=False
         )
 

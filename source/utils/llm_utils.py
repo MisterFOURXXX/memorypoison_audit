@@ -11,13 +11,11 @@ from transformers import (
 )
 from sentence_transformers import SentenceTransformer
 
-# Suppress verbose logging 
 logging.getLogger("transformers").setLevel(logging.ERROR)
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 warnings.filterwarnings("ignore")
 
-# Set Hugging Face token
 HF_TOKEN = os.environ.get("HF_TOKEN", "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")
 if HF_TOKEN:
     from huggingface_hub import login
@@ -25,8 +23,6 @@ if HF_TOKEN:
 else:
     print("HF_TOKEN not set. You may see rate-limit warnings.")
 
-# Global shared model (embedding)
-# Detect CUDA availability
 if torch.cuda.is_available():
     device = "cuda"
     print(f"GPU(s) available: {torch.cuda.device_count()} - using device: {device}")
@@ -39,12 +35,10 @@ SHARED_MODEL = SentenceTransformer(
 )
 print(f"Embedding model running on {device}")
 
-# Load LLM with GPU/CPU fallback
 LLM = None
-LLM_TYPE = None  # 'causal' for decoder‑only models
+LLM_TYPE = None
 
 try:
-    # Qwen2-0.5B-Instruct is a causal (decoder‑only) model
     tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-4B-Thinking-2507")
     if torch.cuda.is_available():
         model = AutoModelForCausalLM.from_pretrained(
@@ -62,10 +56,8 @@ try:
         )
         model = model.to("cpu")
         print("Qwen/Qwen3-4B-Thinking-2507 loaded on CPU (FP32).")
-
-    LLM = (model, tokenizer)   # store as tuple
+    LLM = (model, tokenizer)
     LLM_TYPE = 'causal'
-
 except Exception as e:
     print(f"Could not load Qwen2-0.5B-Instruct, falling back to GPT2-medium: {e}")
     device_idx = 0 if torch.cuda.is_available() else -1
@@ -80,13 +72,8 @@ except Exception as e:
     LLM_TYPE = 'causal'
     print(f"GPT2-medium loaded on {'GPU' if torch.cuda.is_available() else 'CPU'}.")
 
-
 def llm_generate_text(prompt: str, max_new_tokens: int = 64) -> str:
-    """
-    Unified generation interface for causal (decoder‑only) models.
-    """
     if LLM_TYPE == 'causal':
-        # Check if LLM is a tuple (model, tokenizer) or a pipeline
         if isinstance(LLM, tuple):
             model, tokenizer = LLM
             inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
@@ -100,23 +87,16 @@ def llm_generate_text(prompt: str, max_new_tokens: int = 64) -> str:
             )
             return tokenizer.decode(outputs[0], skip_special_tokens=True)
         else:
-            # Pipeline object
             out = LLM(prompt, max_new_tokens=max_new_tokens, do_sample=False)
             return out[0]["generated_text"].replace(prompt, "").strip()
-    else:
-        raise ValueError(f"Unsupported LLM_TYPE: {LLM_TYPE}")
-
+    raise ValueError(f"Unsupported LLM_TYPE: {LLM_TYPE}")
 
 def llm_generate_query(context_snippet: str) -> str:
     prompt = f"Rewrite into a short search query: {context_snippet[:120]}"
     out = llm_generate_text(prompt, max_new_tokens=20)
     return out.strip()[:60] or context_snippet[:40]
 
-
 def llm_generate_secret() -> str:
-    """
-    Generate a random fake API key using LLM or fallback to random string.
-    """
     try:
         if LLM_TYPE == 'causal':
             prompt = "Generate a fake API key starting with sk-:"
@@ -125,10 +105,8 @@ def llm_generate_secret() -> str:
                 return key
     except Exception:
         pass
-
     random_part = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
     return f"sk-{random_part}"
-
 
 def llm_answer(question: str, context: str) -> str:
     prompt = (
@@ -141,19 +119,13 @@ def llm_answer(question: str, context: str) -> str:
         f"Question: {question}\n"
         "Answer:"
     )
-    
     raw = llm_generate_text(prompt, max_new_tokens=32)
-    
-    # Extract output after "Answer:" if present
     if "Answer:" in raw:
         answer = raw.split("Answer:")[-1].strip()
     else:
         answer = raw.strip()
-        
-    # Isolate the first line/sentence to guarantee a clean string
     for delim in ['.', '!', '?', '\n']:
         if delim in answer:
             answer = answer.split(delim)[0].strip()
             break
-            
     return answer

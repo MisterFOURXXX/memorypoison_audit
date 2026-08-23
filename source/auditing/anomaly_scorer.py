@@ -5,6 +5,9 @@ from sklearn.ensemble import IsolationForest
 SEED = 42
 
 class AnomalyScorer:
+    """
+    Wrapper for LOF or Isolation Forest to detect outliers in embedding space.
+    """
     def __init__(self, method: str = "lof", contamination: float = 0.15, n_neighbors: int = 15):
         if method == "lof":
             self.scorer = LocalOutlierFactor(

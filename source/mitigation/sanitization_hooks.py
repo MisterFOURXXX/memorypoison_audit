@@ -4,6 +4,9 @@ from ..auditing.anomaly_scorer import AnomalyScorer
 from ..core.memory_store import MemoryStore
 
 class SanitizationHooks:
+    """
+    Intercepts retrieval results, prunes outliers using an anomaly scorer.
+    """
     def __init__(self, enabled: bool = True, config: Optional[Dict] = None):
         self.enabled = enabled
         if config is None:
@@ -23,16 +26,14 @@ class SanitizationHooks:
         if not self.enabled or not retrieved:
             return retrieved
 
-        # Fit background if not already fitted
         if not self.scorer.fitted:
             sid = retrieved[0]["metadata"].get("session_id")
             if sid:
                 self.fit_background(store, sid)
 
         if not self.scorer.fitted:
-            return retrieved  # cannot prune without a fitted scorer
+            return retrieved
 
-        # Build embedding matrix for the retrieved items
         embs = []
         for item in retrieved:
             e = item["metadata"].get("embedding")
@@ -42,14 +43,10 @@ class SanitizationHooks:
 
         preds = self.scorer.predict(np.asarray(embs, dtype=np.float32))
 
-        # Fallback: avoid over‑pruning 
         outlier_count = np.sum(preds == -1)
         total = len(preds)
-        if outlier_count > total * 0.5:   # more than 50% outliers
-            return retrieved   # keep everything
+        if outlier_count > total * 0.5:
+            return retrieved   # keep everything to avoid over‑pruning
 
-        # Normal pruning: remove outlier vectors
         pruned = [item for i, item in enumerate(retrieved) if preds[i] != -1]
-
-        # Ensure we always return at least one document
         return pruned if pruned else retrieved[:1]

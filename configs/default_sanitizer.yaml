@@ -1,6 +1,0 @@
-sanitizer_config = {
-    "enabled": True,
-    "method": "lof",
-    "n_neighbors": 15,
-    "contamination": 0.15,
-}
