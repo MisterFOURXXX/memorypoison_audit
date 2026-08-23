@@ -8,16 +8,17 @@ class GradientFreePerturber:
         self.budget = budget
         self.model = model
 
-    def apply_to_memory(self, store: MemoryStore, session_id: str, text: str):
-        emb = self.model.encode([text], convert_to_numpy=True)[0]
-        noise = np.random.uniform(-self.budget, self.budget, size=emb.shape)
-        perturbed = emb + noise
-        perturbed /= np.linalg.norm(perturbed) + 1e-9
-        collection = store.get_collection(session_id)
-        doc_id = f"poison_{uuid.uuid4().hex[:10]}"
-        collection.add(
-            ids=[doc_id],
-            embeddings=[perturbed.tolist()],
-            documents=[text],
-            metadatas=[{"is_poison": True, "session_id": session_id}],
-        )
+    def apply_to_memory(self, store: MemoryStore, session_id: str, text: str, num_copies=3):
+        for _ in range(num_copies):
+            emb = self.model.encode([text], convert_to_numpy=True)[0]
+            noise = np.random.uniform(-self.budget, self.budget, size=emb.shape)
+            perturbed = emb + noise
+            perturbed /= np.linalg.norm(perturbed) + 1e-9
+            collection = store.get_collection(session_id)
+            doc_id = f"poison_{uuid.uuid4().hex[:10]}"
+            collection.add(
+                ids=[doc_id],
+                embeddings=[perturbed.tolist()],
+                documents=[text],
+                metadatas=[{"is_poison": True, "session_id": session_id}],
+            )

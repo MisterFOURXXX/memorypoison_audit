@@ -10,10 +10,9 @@ from memorypoison_audit.source.core.memory_store import MemoryStore
 from memorypoison_audit.source.attacks.gradient_free_perturber import GradientFreePerturber
 from memorypoison_audit.source.attacks.leakage_probe import LeakageProbe
 from memorypoison_audit.source.mitigation.sanitization_hooks import SanitizationHooks
-from memorypoison_audit.source.utils.data_loader import get_user_messages, get_all_messages
-from memorypoison_audit.source.utils.llm_utils import LLM_TYPE
+#from memorypoison_audit.source.utils.data_loader import get_user_messages, get_all_messages
+#from memorypoison_audit.source.utils.llm_utils import LLM_TYPE   # <-- uncommented
 from memorypoison_audit.source.attacks.malicious_generator import MaliciousTextGenerator
-
 
 SEED = 42
 random.seed(SEED)
@@ -29,9 +28,8 @@ def run_asr_experiment(
     llm_generate_query_func: Callable,
     llm_generate_text_func: Callable,
     shared_model: SentenceTransformer,
-    verbose: bool = True,          # <-- added
+    verbose: bool = True,
 ) -> pd.DataFrame:
-    
     if verbose:
         print(f"\n=== ASR (sanitization={with_sanitization}, split={split_name}) ===")
     instances = instances_s if split_name == "s_cleaned" else instances_m
@@ -70,7 +68,6 @@ def run_asr_experiment(
         mal_texts = attack_cfg["malicious_texts"]
 
     # Add queries derived from malicious texts to the pool
-    # After building mal_texts
     if mal_texts:
         mal_queries = [llm_generate_query_func(mal) for mal in mal_texts]
         query_pool.extend(mal_queries * 3)
@@ -79,7 +76,6 @@ def run_asr_experiment(
     if not query_pool:
         query_pool = [f"What happened in conversation {i}?" for i in range(attack_cfg["total_turns"])]
 
-    keywords = ["COMPROMISED"]   # fallback, but we use mal_texts for detection
     perturber = GradientFreePerturber(budget=attack_cfg["perturbation_budget"], model=shared_model)
     injection_turns = set(attack_cfg["injection_turns"])
     poison_idx = 0
@@ -121,7 +117,7 @@ def run_leakage_experiment(
     shared_model: SentenceTransformer,
     num_background: int = 600,
     top_k: int = 5,
-    verbose: bool = True,          # <-- added
+    verbose: bool = True,
     llm_generate_text_func: Optional[Callable] = None,
 ) -> Tuple[float, Optional[float]]:
     if verbose:
@@ -147,15 +143,7 @@ def run_leakage_experiment(
 
     store.add_fact(session_id, secret, metadata={"secret": True, "user": "A"})
 
-    # Inside run_leakage_experiment, after creating store and before adding secret:
-    probe = LeakageProbe(
-        store,
-        llm_func=llm_generate_text_func,  # pass the text generation function
-        llm_type=LLM_TYPE                 # from llm_utils
-    )
-    # We need to allow top_k in the probe; modify LeakageProbe.calculate_leakage_score to accept top_k.
-    # For now, we'll just use the default top_k=5; we assume you have modified that method.
-    # If not, we can pass top_k as an argument; we'll assume the method has been updated.
+    probe = LeakageProbe(store, llm_func=llm_generate_text_func, llm_type=LLM_TYPE)
     score_before = probe.calculate_leakage_score(session_id, secret, top_k=top_k)
     if verbose:
         print(f"Leakage before rollback: {score_before:.4f}")
@@ -183,10 +171,11 @@ def run_accuracy_experiment(
     attack_cfg: Dict,
     sanitizer_cfg: Dict,
     instances_oracle: List[Dict],
-    llm_answer_func: Callable,
-    shared_model: SentenceTransformer,
+    llm_answer_func: Callable,                    # 6th
+    shared_model: SentenceTransformer,            # 7th
+    llm_generate_text_func: Optional[Callable] = None,   # 8th
     qa_top_k: int = 3,
-    verbose: bool = True,          # <-- added
+    verbose: bool = True,
 ) -> Tuple[float, float]:
     if verbose:
         print(f"\n=== Accuracy (poison={with_poison}, sanitization={with_sanitization}) ===")
@@ -214,6 +203,9 @@ def run_accuracy_experiment(
     if with_poison:
         perturber = GradientFreePerturber(budget=attack_cfg["perturbation_budget"], model=shared_model)
         if attack_cfg.get("use_llm_generated", False):
+            # Use the passed text generation function
+            if llm_generate_text_func is None:
+                raise ValueError("use_llm_generated=True but llm_generate_text_func is not provided")
             generator = MaliciousTextGenerator(llm_generate_text_func, LLM_TYPE)
             mal_texts = generator.generate_batch(n=attack_cfg.get("num_malicious_generations", 4))
         else:

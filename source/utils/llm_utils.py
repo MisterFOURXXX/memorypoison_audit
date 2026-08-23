@@ -3,8 +3,8 @@ import torch
 import logging
 import warnings
 import os
-import secrets          # <-- added
-import string           # <-- added
+import secrets          
+import string           
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 from sentence_transformers import SentenceTransformer
 
@@ -15,7 +15,7 @@ os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 warnings.filterwarnings("ignore")
 
 # ---- Set Hugging Face token ----
-HF_TOKEN = os.environ.get("HF_TOKEN", "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")  # <-- replace with your actual token or set as env variable
+HF_TOKEN = os.environ.get("HF_TOKEN", "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")  # <-- replace with your actual token or set as env variable
 if HF_TOKEN:
     from huggingface_hub import login
     login(token=HF_TOKEN, add_to_git_credential=False)
@@ -33,15 +33,15 @@ LLM = None
 LLM_TYPE = None  # 'seq2seq' or 'gpt'
 
 try:
-    tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small")
-    model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small").to(device)
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-0.5B-Instruct")
+    model = AutoModelForSeq2SeqLM.from_pretrained("Qwen/Qwen2-0.5B-Instruct").to(device)
     LLM = (model, tokenizer)
     LLM_TYPE = 'seq2seq'
 except Exception as e:
-    print(f"Could not load flan-t5-small, falling back to distilgpt2: {e}")
+    print(f"Could not load Qwen2-0.5B-Instruct, falling back to GPT2-medium: {e}")
     LLM = pipeline(
         "text-generation",
-        model="distilgpt2",
+        model="openai-community/gpt2-medium",
         device=0 if device == "cuda" else -1,
         max_new_tokens=48,
         pad_token_id=50256,
