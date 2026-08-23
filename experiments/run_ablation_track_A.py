@@ -7,7 +7,7 @@ from memorypoison_audit.source.utils.llm_utils import SHARED_MODEL, llm_generate
 from memorypoison_audit.experiments.experiment_runner import run_asr_experiment
 
 # Load base instances (cached) – use smaller sample ratios for speed
-def load_data(sample_ratio_s=0.25, sample_ratio_m=0.25, sample_ratio_oracle=0.4):
+def load_data(sample_ratio_s=0.15, sample_ratio_m=0.15, sample_ratio_oracle=0.2):
     loader_s = LongMemEvalLoader(split="s_cleaned", sample_ratio=sample_ratio_s)
     loader_m = LongMemEvalLoader(split="m_cleaned", sample_ratio=sample_ratio_m)
     loader_oracle = LongMemEvalLoader(split="oracle", sample_ratio=sample_ratio_oracle)
@@ -15,7 +15,7 @@ def load_data(sample_ratio_s=0.25, sample_ratio_m=0.25, sample_ratio_oracle=0.4)
 
 instances_s, instances_m, _ = load_data()  # oracle not needed for ASR sweeps
 
-# Define ablation sweeps – now we can also sweep use_llm_generated
+# Define ablation sweeps
 sweeps = [
     {
         "name": "sanitization_method",
@@ -177,3 +177,4 @@ df_results = pd.DataFrame(results)
 os.makedirs("experiments/results/ablation", exist_ok=True)
 df_results.to_csv("experiments/results/ablation/ablation_results.csv", index=False)
 print("Ablation results saved.")
+df_results

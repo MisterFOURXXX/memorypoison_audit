@@ -42,7 +42,7 @@ class SanitizationHooks:
 
         preds = self.scorer.predict(np.asarray(embs, dtype=np.float32))
 
-        # ---- Fallback: avoid over‑pruning ----
+        # Fallback: avoid over‑pruning 
         outlier_count = np.sum(preds == -1)
         total = len(preds)
         if outlier_count > total * 0.5:   # more than 50% outliers
