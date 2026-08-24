@@ -73,7 +73,7 @@ The key contribution of the project is modifying the retrieval pipeline **after*
 
 The research tests whether *post‑retrieval pruning* is sufficient to remove malicious injections without harming benign facts. The "retrieval logic" under evaluation is no longer just the ANN search, but the **augmented pipeline**:
 
-> `ANN Search` → `Anomaly Scoring` → `Outlier Pruning` → `Final Context for LLM`
+-> `ANN Search` -> `Anomaly Scoring` -> `Outlier Pruning` -> `Final Context for LLM`
 
 This is the "retrieval‑time defence" that the project claims is novel—it does not alter the stored vectors, nor does it filter input; it selectively **filters what is retrieved** based on the statistical properties of the neighbourhood.
 
