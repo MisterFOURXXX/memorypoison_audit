@@ -8,7 +8,7 @@ Current LLM agents (e.g., personal assistants, coding co‑pilots) are shifting 
 
 ---
 
-**Foundational Literature**
+### Foundational Literature
 
 The project is grounded in state‑of‑the‑art work:
 - Prompt Injection & Jailbreaking – Greshake et al. (2023) and Liu et al. (2024) show that indirect injections can persist through context windows, highlighting the need for memory‑aware defences.
@@ -30,7 +30,7 @@ The project is structured around four testable hypotheses:
 
 ---
 
-**Approach**
+### Approach
 
 The breakdown of the vector store, the retrieval logic, and the specific mechanisms being studied.
 
@@ -77,76 +77,56 @@ The research tests whether *post‑retrieval pruning* is sufficient to remove ma
 
 This is the "retrieval‑time defence" that the project claims is novel—it does not alter the stored vectors, nor does it filter input; it selectively **filters what is retrieved** based on the statistical properties of the neighbourhood.
 
-**5. Metrics That Quantify Retrieval Behaviour**
+**Proposed Defense Architecture Flow**
 
-The project uses the following metrics to evaluate the retrieval logic in each scenario:
+```text
 
-<div align="left">
-
-| Metric | What it Measures About Retrieval |
-|:-------|:---------------------------------|
-| **Attack Success Rate (ASR)** | Whether the poisoned vector appears in the retrieved top‑k set. |
-| **Leakage Score** | The maximum cosine similarity between a probe query and the stored secret vector. |
-| **RAG Hit‑Rate / F1** | Whether the pruned retrieval set still allows the LLM to answer correctly. |
-| **Latency Overhead** | How much time the added pruning step adds to the retrieval call. |
-
-</div>
-
-**Summary Table**
-
-<div align="left">
-
-| Component | Technology / Logic | Role in the Study |
-|:----------|:-------------------|:------------------|
-| **Vector Store** | ChromaDB (persistent, local) | Stores session‑isolated collections of dense embeddings. |
-| **Embedding Model** | `all-MiniLM-L6-v2` | Converts texts to 384‑dim vectors for similarity search. |
-| **Standard Retrieval** | Cosine ANN search (top‑k) | **The attack target**—perturbed embeddings can force malicious facts into the top‑k. |
-| **Leakage Retrieval** | Cross‑collection search | **The leakage vector**—shared namespaces allow User B to retrieve User A’s embeddings. |
-| **Defended Retrieval** | ANN search + LOF pruning | **The mitigation**—outliers are pruned from the retrieved set before they reach the LLM. |
-
-</div>
-
----
-
-**Experimental Design**
-
-To validate the hypotheses, we run three independent experimental tracks, each with clear setups and metrics.
-
-**Track A: Memory Retrieval Attack Success Rate (ASR)**
-- Setup: The agent stores 100 benign facts. The attacker injects 1 malicious fact per 10 interactions (at turns 5, 10, 15, …). We query the agent at every subsequent turn and measure whether the malicious fact is retrieved.
-- Metric: ASR = (Number of retrievals containing the malicious text) / (Total retrieval calls) over a sliding window of 50 turns.
-- Expected Outcome: Without defence, ASR stabilises around 65–70% due to persistence; with sanitisation, ASR drops below 10%.
-
-**Track B: Cross‑Session Context Leakage**
-
-- Setup: User A completes a 10‑turn session involving a fake “API Key: sk‑12345”. The agent stores this in long‑term memory. We then perform a session wipe (clearing short‑term context) and start User B’s session on the same instance. User B asks generic probing questions (e.g., “What is the key?”).
-- Metric: Leakage Score = maximum cosine similarity between the embedding of User A’s secret and the embeddings retrieved for User B’s queries.
-- Expected Outcome: Naive vector stores leak ~30% of semantic information. Our rollback mechanism (which zeroes out session‑specific tensors) reduces leakage to near 0.
-
-**Track C: Downstream RAG Accuracy (Sanitisation Overhead)**
-
-- Setup: Use a QA dataset (e.g., Natural Questions) embedded in the vector store. Measure baseline RAG accuracy (Exact Match, F1) without poisoning, then with poisoning and with/without sanitisation.
-- Metric: EM and F1 of the agent’s final response.
-- Expected Outcome: The pruning algorithm removes adversarial outliers without collapsing the manifold of benign facts – EM drops from ~82% to at most 80.5% (acceptable), while ASR simultaneously drops from 65% to 8%.
-
----
+               ┌──────────────────────────────────────────────────────────┐
+               │                        User Query                        │
+               └────────────────────────────┬─────────────────────────────┘
+                                            │
+                                            ▼
+               ┌──────────────────────────────────────────────────────────┐
+               │         MemoryStore (ChromaDB + all-MiniLM-L6-v2)        │
+               └────────────────────────────┬─────────────────────────────┘
+                                            │
+                                 Standard Cosine ANN Search
+                                            │
+                                            ▼
+               ┌──────────────────────────────────────────────────────────┐
+               │     Retrieval-Augmented Pruning (RAP) Sanitization       │
+               │  • AnomalyScorer (LOF / Isolation Forest)                │
+               │  • Fit on session background benign vector manifold      │
+               └────────────────────────────┬─────────────────────────────┘
+                                            │
+                             Prunes Outlier Vectors (-1)
+                                            │
+                                            ▼
+               ┌──────────────────────────────────────────────────────────┐
+               │      Session Rollback & Namespace Isolation Guard        │
+               │  • Zeroes session-specific residual memory tensors       │
+               │  • Prevents cross-collection embedding leakage           │
+               └────────────────────────────┬─────────────────────────────┘
+                                            │
+                             Cleaned Context Window
+                                            │
+                                            ▼
+               ┌──────────────────────────────────────────────────────────┐
+               │               Downstream LLM Context Ingestion           │
+               └──────────────────────────────────────────────────────────┘
+```
 
 **System Architecture**
 
 The repository is organised as a modular Python package with the following structure (based on the provided file tree):
 ```text
 memorypoison_audit/
-├── configs/                    # YAML configuration files
-│   ├── default_attack.yaml
-│   └── default_sanitizer.yaml
 ├── experiments/                # Experiment scripts and notebooks
 │   ├── experiment_runner.py
 │   ├── run_ablation_track_A.py
 │   ├── run_ablation_track_B.py
 │   ├── run_ablation_track_C.py
 │   ├── run_attack_suite.py
-├── scripts/                    # Reproducibility scripts
-│   └── reproduce_results.sh
 ├── source/                     # Main package (named 'source' in tree, but logically 'memorypoison_audit')
 │   ├── attacks/                # Attack modules
 │   │   ├── gradient_free_perturber.py
@@ -194,19 +174,175 @@ memorypoison_audit/
 
 - **`utils/llm_utils.py`** – Shared utilities for generating text, rewriting queries, and answering questions using a small LLM (flan‑t5‑small or distilgpt2 as fallback). It also includes a function to generate fake API keys for leakage experiments. The module handles Hugging Face authentication and device selection.
 
+---
+
+### Experimental Design
+
+To validate the hypotheses, we run three independent experimental tracks, each with clear setups and metrics.
+
+```text
+
+                 ┌──────────────────────────────────────────────────────────────────────┐
+                 │                       Main Attack Evaluation                         │
+                 └──────────────────────────────────┬───────────────────────────────────┘
+                                                    │
+                 ┌──────────────────────────────────┼───────────────────────────────────┐
+                 │                                  │                                   │
+                 ▼                                  ▼                                   ▼
+ ┌───────────────────────────────┐  ┌───────────────────────────────┐  ┌───────────────────────────────┐
+ │            TRACK A            │  │            TRACK B            │  │            TRACK C            │
+ │    Memory Retrieval Attack    │  │     Cross-Session Leakage     │  │     Downstream RAG Quality    │
+ └───────────────┬───────────────┘  └───────────────┬───────────────┘  └───────────────┬───────────────┘
+                 │                                  │                                  │
+ ┌───────────────┴───────────────┐  ┌───────────────┴───────────────┐  ┌───────────────┴───────────────┐
+ │ • Setup: Inject 1 malicious   │  │ • Setup: User A stores key,   │  │ • Setup: Benchmark QA data    │
+ │   fact / 10 turns into 100    │  │   wipe session, User B queries│  │   under clean, poisoned, and  │
+ │   benign facts                │  │   shared space                │  │   defended states             │
+ │ • Defense: LOF / Isolation    │  │ • Defense: Tensor zeroing /   │  │ • Defense: Retrieval-Augmented│
+ │   Forest anomaly hooks        │  │   session rollback            │  │   Pruning (RAP)               │
+ │ • Metric: Attack Success Rate │  │ • Metric: Cosine Similarity   │  │ • Metric: Token-level F1 &    │
+ │   (ASR)                       │  │   Leakage Score               │  │   Exact Match Hit-Rate        │
+ └───────────────┬───────────────┘  └───────────────┬───────────────┘  └────────────────┬──────────────┘
+                 │                                  │                                   │   ticket
+                 ▼                                  ▼                                   ▼
+ ┌───────────────────────────────┐  ┌───────────────────────────────┐  ┌───────────────────────────────┐ 
+ │    Track A Ablations Tested   │  │    Track B Ablations Tested   │  │    Track C Ablations Tested   │
+ ├───────────────────────────────┤  ├───────────────────────────────┤  ├───────────────────────────────┤
+ │ • Sanitizer Selection         │  │ • Retrieval Depth Impact      │  │ • Defense Method Overhead     │
+ │   (LOF vs. Isolation Forest)  │  │   (k-window scaling)          │  │   (F1 score retention)        │
+ │ • Perturbation Budget Noise   │  │ • Scaling Background Memory   │  │ • Top-k Window Context        │
+ │ • Contamination Thresholds    │  │   (density vs. leakage)       │  │   Resilience                  │
+ │ • Dynamic LLM vs. Static      │  │ • Rollback vs. No-Rollback    │  │ • Clean Context Utility       │
+ │   Payloads                    │  │   Isolation                   │  │   Impact                      │
+ └───────────────────────────────┘  └───────────────────────────────┘  └───────────────────────────────┘
+
+```
+
+**Track A: Memory Retrieval Attack Success Rate (ASR)**
+- Setup: The agent stores 100 benign facts. The attacker injects 1 malicious fact per 10 interactions (at turns 5, 10, 15, …). We query the agent at every subsequent turn and measure whether the malicious fact is retrieved.
+- Metric: ASR = (Number of retrievals containing the malicious text) / (Total retrieval calls) over a sliding window of 50 turns.
+- Expected Outcome: Without defence, ASR stabilises around 65–70% due to persistence; with sanitisation, ASR drops below 10%.
+
+**Track B: Cross‑Session Context Leakage**
+
+- Setup: User A completes a 10‑turn session involving a fake “API Key: sk‑12345”. The agent stores this in long‑term memory. We then perform a session wipe (clearing short‑term context) and start User B’s session on the same instance. User B asks generic probing questions (e.g., “What is the key?”).
+- Metric: Leakage Score = maximum cosine similarity between the embedding of User A’s secret and the embeddings retrieved for User B’s queries.
+- Expected Outcome: Naive vector stores leak ~30% of semantic information. Our rollback mechanism (which zeroes out session‑specific tensors) reduces leakage to near 0.
+
+**Track C: Downstream RAG Accuracy (Sanitisation Overhead)**
+
+- Setup: Use a QA dataset (e.g., Natural Questions) embedded in the vector store. Measure baseline RAG accuracy (Exact Match, F1) without poisoning, then with poisoning and with/without sanitisation.
+- Metric: EM and F1 of the agent’s final response.
+- Expected Outcome: The pruning algorithm removes adversarial outliers without collapsing the manifold of benign facts – EM drops from ~82% to at most 80.5% (acceptable), while ASR simultaneously drops from 65% to 8%.
+
+---
+
 ### Experiments Setup
 
-
 ```bash
+# Clone repository
 git clone https://github.com/your-username/memorypoison_audit.git
-```
-```bash
+
+# Replace your hugging face token here
+cd .\memorypoison_audit\source\utils\llm_utils.py
+
+# Change to project repository
 cd memorypoison_audit
-```
-```bash
+
+# Install requirements
 pip install -r requirements.txt
+
+# Restart Kernel
+exit 0
+
+# Run the primary attack evaluation suite (Tracks A, B, and C baselines)
+python -m experiments.run_attack_suite
+
+# Run Track A ablation study (ASR & Injection parameters)
+python -m experiments.run_ablation_track_A
+
+# Run Track B ablation study (Cross-Session Context Leakage & Rollback)
+python -m experiments.run_ablation_track_B
+
+# Run Track C ablation study (RAG QA Accuracy & Utility)
+python -m experiments.run_ablation_track_C
 ```
 
-cd /kaggle/working/memorypoison_audit
-pip install -r requirements.txt
-exit 0  
+---
+
+### Evaluation Metrics
+
+The experimental metrics measure Attack Resilience (Track A), Cross-Session Leakage (Track B), and Downstream RAG Quality (Track C).
+
+**Track A: Attack Success Rate (ASR)**
+
+ASR measures the proportion of evaluation turns in which at least one malicious vector successfully enters the retrieved top-$k$ context window.
+
+**Track B: Cross-Session Context Leakage Score**
+
+Leakage Score measures semantic cross-talk between isolated user sessions. It calculates the maximum cosine similarity between vectors retrieved in Session 2 (using generic or leakage probes) and the secret vector injected in Session 1.
+
+**Track C: RAG Downstream QA Metrics ($F_1$ and Hit-Rate)**
+
+These metrics evaluate whether post-retrieval anomaly filtering impacts the agent's core capability to answer questions accurately.
+
+- **Macro-Averaged Token $F_1$ Score:** Measures the harmonic mean of token-level precision and recall between the predicted LLM response text and the ground-truth target answer.
+- **Exact Match / Hit-Rate:** Measures whether the retrieved top-$k$ context window contains the exact ground-truth answer string (or whether the LLM output exactly matches the ground-truth target).
+
+---
+
+### Results & Ablation Analysis
+
+The framework was evaluated across three distinct tracks to measure adversarial persistence, cross-session memory isolation, and downstream model performance under attack.
+
+**Track A: Attack Success Rate & Injection Persistence**
+
+Track A examines how effectively adversarial payloads penetrate dense memory retrieval across conversational turns, and whether anomaly detection can filter them out.
+
+**Main Findings**
+
+- Baseline Vulnerability: Without defensive filtering, adversarial prompt injections successfully dominate retrieval results in nearly all tested conversational rounds. The attack success rate remains exceptionally high across the entire interaction length.
+- Impact of Local Outlier Factor Defense: Activating neighborhood-based anomaly detection cuts the attack success rate almost in half, demonstrating that distance-based filtering creates meaningful friction for adversarial vectors.
+
+**Ablation Analysis**
+
+- Sanitizer Selection: Local Outlier Factor significantly outperforms Isolation Forest. While Isolation Forest fails to reduce the attack success rate at all, Local Outlier Factor successfully suppresses malicious vector retrieval.
+- Perturbation Budget: Varying the allowed noise level applied to attack vectors does not alter the baseline success rate. Small perturbations are already sufficient to push malicious facts into top retrieval rankings.
+- Contamination Sensitivity: Adjusting the expected outlier contamination setting in the defense model shows that overly conservative contamination thresholds can slightly reduce defense efficacy, whereas balanced neighborhood tracking achieves stronger filtering.
+- LLM-Generated vs. Static Payloads: Dynamically generated LLM attacks are substantially harder for static anomaly filters to catch. While static payloads are often flagged, LLM-generated attack queries lower the defense's overall effectiveness, allowing more malicious contexts to slip through.
+- Injection Frequency & Noise Scaling: Increasing the frequency of malicious injections or adding hundreds of background benign facts does not degrade the attack's persistence. Adversarial vectors maintain high retrieval priority regardless of background database volume.
+
+**Track B: Cross-Session Context Leakage**
+
+Track B evaluates whether sensitive information stored in one session persists into subsequent sessions when using shared vector spaces, and measures the impact of explicit session rollbacks.
+
+**Main Findings**
+
+- Undefended Cross-Session Exposure: Without memory rollback mechanisms, querying the vector database in a new session frequently retrieves sensitive data remaining from previous sessions, causing significant cross-talk leakage.
+- Effectiveness of Rollback Mechanisms: Implementing session-isolated rollbacks successfully mitigates memory persistence, keeping cross-session information exposure consistently low.
+
+**Ablation Analysis**
+
+- Retrieval Depth Impact: Broader retrieval depths naturally increase the risk of exposing cross-session secrets when rollbacks are absent. However, when active, rollback defenses maintain low leakage scores across shallow and deep retrieval contexts alike.
+- Scaling Background Memory: Increasing the density of benign background facts slightly elevates residual leakage in unmitigated environments, but explicit session rollbacks neutralize this effect and keep cross-namespace leakage controlled.
+
+**Track C: Downstream RAG Utility & Retrieval Accuracy**
+
+Track C measures the trade-off between security filtering and underlying system performance by evaluating answer accuracy and hit rates on question-answering tasks under clean, poisoned, and defended states.
+
+**Main Findings**
+
+- Clean & Poisoned Baselines: Baseline retrieval quality on dense question-answering tasks maintains a consistent level of performance regardless of whether malicious vectors are present in the store.
+- Impact of Defensive Pruning: Applying Local Outlier Factor pruning to filter suspicious vectors introduces minimal overhead, preserving downstream utility and keeping question-answering performance nearly identical to undefended baselines.
+
+**Ablation Analysis**
+
+- Defense Method Overhead: Local Outlier Factor achieves higher retrieval context fidelity than Isolation Forest, maintaining stronger answer overlap scores while active.
+- Top-k Window Size: Retrieving a larger candidate set provides better context resilience when filtering is active, ensuring that the security filter isn't over-filtering. The model can still answer regular user questions accurately because the necessary background facts are still getting through.
+- Clean Context Utility: Running anomaly detection on completely clean, unpoisoned context stores does not degrade answer accuracy, confirming that post-retrieval pruning carries negligible downside for regular operation.
+
+---
+
+### License
+
+MIT © Apiwit Karnjanavivin

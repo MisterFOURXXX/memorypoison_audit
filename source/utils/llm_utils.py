@@ -16,7 +16,7 @@ logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 warnings.filterwarnings("ignore")
 
-HF_TOKEN = os.environ.get("HF_TOKEN", "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")
+HF_TOKEN = os.environ.get("HF_TOKEN", "YOUR_HF_TOKEN")     # Replace your huggingface token here
 if HF_TOKEN:
     from huggingface_hub import login
     login(token=HF_TOKEN, add_to_git_credential=False)
