@@ -1,4 +1,4 @@
-# MemoryPoison-Audit
+# Memory Poison Audit for long-term LLM memory threats
 
 The core research in MemoryPoison‑Audit focuses specifically on dense retrieval over persistent vector memory. The project studies how adversarial perturbations manipulate this retrieval and how to defend it by modifying the retrieval pipeline—all without changing the underlying LLM. MemoryPoison‑Audit is an academic research framework designed to audit and mitigate security vulnerabilities in long‑horizon LLM agents that rely on external persistent memory. The project addresses two complementary threat models: memory poisoning (adversarial injection that corrupts future retrieval) and cross‑session context leakage (sensitive information persisting across session boundaries despite explicit wipes). The framework implements a red‑teaming engine with gradient‑free adversarial perturbation strategies and a retrieval‑time anomaly‑based sanitisation layer, making it a full purple‑team solution.
 
