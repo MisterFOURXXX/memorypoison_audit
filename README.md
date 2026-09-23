@@ -1,7 +1,5 @@
 # Memory Poison Audit for long-term LLM memory threats
 
-# Memory Poison Audit for Long-Term LLM Memory Threats
-
 > An end-to-end, reproducible academic research framework that audits and mitigates 
 > security vulnerabilities in long-horizon LLM agents relying on external persistent memory. 
 > It implements a red-teaming engine with **gradient-free adversarial perturbation strategies** 
