@@ -1,5 +1,22 @@
 # MemoryPoison-Audit
 
+# Memory Poison Audit for Long-Term LLM Memory Threats
+
+> An end-to-end, reproducible academic research framework that audits and mitigates 
+> security vulnerabilities in long-horizon LLM agents relying on external persistent memory. 
+> It implements a red-teaming engine with **gradient-free adversarial perturbation strategies** 
+> and a retrieval-time anomaly-based sanitisation layer (**Retrieval-Augmented Pruning**), 
+> addressing both memory poisoning and cross-session context leakage without modifying the core LLM.
+
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/pytorch-2.10%2B-ee4c2c.svg)](https://pytorch.org/)
+[![Transformers](https://img.shields.io/badge/transformers-4.57-yellow.svg)](https://huggingface.co/docs/transformers)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-vector--store-purple.svg)](https://www.trychroma.com/)
+[![Sentence-Transformers](https://img.shields.io/badge/sentence--transformers-all--MiniLM--L6--v2-orange.svg)](https://sbert.net/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
+
 The core research in MemoryPoison‑Audit focuses specifically on dense retrieval over persistent vector memory. The project studies how adversarial perturbations manipulate this retrieval and how to defend it by modifying the retrieval pipeline—all without changing the underlying LLM. MemoryPoison‑Audit is an academic research framework designed to audit and mitigate security vulnerabilities in long‑horizon LLM agents that rely on external persistent memory. The project addresses two complementary threat models: memory poisoning (adversarial injection that corrupts future retrieval) and cross‑session context leakage (sensitive information persisting across session boundaries despite explicit wipes). The framework implements a red‑teaming engine with gradient‑free adversarial perturbation strategies and a retrieval‑time anomaly‑based sanitisation layer, making it a full purple‑team solution.
 
 **Motivation**
