@@ -15,6 +15,46 @@
 
 ---
 
+## Table of Contents
+
+- [Motivation](#motivation)
+- [Foundational Literature](#foundational-literature)
+- [Research Gap](#research-gap)
+- [Research Hypotheses](#research-hypotheses)
+- [Approach](#approach)
+ - [1. The Vector Store (The Memory Backend)](#1-the-vector-store-the-memory-backend)
+ - [2. The Standard Retrieval Logic (The Attack Surface)](#2-the-standard-retrieval-logic-the-attack-surface)
+ - [3. The Retrieval Logic Under Study (Cross-Session Leakage)](#3-the-retrieval-logic-under-study-cross-session-leakage)
+ - [4. The Defended Retrieval Logic (The Novel Contribution)](#4-the-defended-retrieval-logic-the-novel-contribution)
+ - [Proposed Defense Architecture Flow](#proposed-defense-architecture-flow)
+- [System Architecture](#system-architecture)
+- [Key Component Descriptions](#key-component-descriptions)
+- [Experimental Design](#experimental-design)
+ - [Track A: Memory Retrieval Attack Success Rate (ASR)](#track-a-memory-retrieval-attack-success-rate-asr)
+ - [Track B: Cross-Session Context Leakage](#track-b-cross-session-context-leakage)
+ - [Track C: Downstream RAG Accuracy (Sanitisation Overhead)](#track-c-downstream-rag-accuracy-sanitisation-overhead)
+- [Experiments Setup](#experiments-setup)
+- [Evaluation Metrics](#evaluation-metrics)
+ - [Track A: Attack Success Rate (ASR)](#track-a-attack-success-rate-asr)
+ - [Track B: Cross-Session Context Leakage Score](#track-b-cross-session-context-leakage-score)
+ - [Track C: RAG Downstream QA Metrics (F1 and Hit-Rate)](#track-c-rag-downstream-qa-metrics-f1-and-hit-rate)
+- [Results & Ablation Analysis](#results--ablation-analysis)
+ - [Track A: Attack Success Rate & Injection Persistence](#track-a-attack-success-rate--injection-persistence)
+   - [Main Findings](#main-findings)
+   - [Ablation Analysis](#ablation-analysis)
+ - [Track B: Cross-Session Context Leakage](#track-b-cross-session-context-leakage)
+   - [Main Findings](#main-findings-1)
+   - [Ablation Analysis](#ablation-analysis-1)
+ - [Track C: Downstream RAG Utility & Retrieval Accuracy](#track-c-downstream-rag-utility--retrieval-accuracy)
+   - [Main Findings](#main-findings-2)
+   - [Ablation Analysis](#ablation-analysis-2)
+- [License](#license)
+- [About](#about)
+
+---
+
+## Introduction
+
 The core research in MemoryPoison‑Audit focuses specifically on dense retrieval over persistent vector memory. The project studies how adversarial perturbations manipulate this retrieval and how to defend it by modifying the retrieval pipeline—all without changing the underlying LLM. MemoryPoison‑Audit is an academic research framework designed to audit and mitigate security vulnerabilities in long‑horizon LLM agents that rely on external persistent memory. The project addresses two complementary threat models: memory poisoning (adversarial injection that corrupts future retrieval) and cross‑session context leakage (sensitive information persisting across session boundaries despite explicit wipes). The framework implements a red‑teaming engine with gradient‑free adversarial perturbation strategies and a retrieval‑time anomaly‑based sanitisation layer, making it a full purple‑team solution.
 
 **Motivation**
