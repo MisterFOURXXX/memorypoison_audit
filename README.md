@@ -29,10 +29,11 @@
   - [Proposed Defense Architecture Flow](#proposed-defense-architecture-flow)
   - [System Architecture](#system-architecture)
   - [Key Component Descriptions](#key-component-descriptions)
-- [Experimental Design](#experimental-design)
-   - [Track A: Memory Retrieval Attack Success Rate (ASR)](#track-a-memory-retrieval-attack-success-rate-asr)
-   - [Track B: Cross-Session Context Leakage](#track-b-cross-session-context-leakage)
-   - [Track C: Downstream RAG Accuracy (Sanitisation Overhead)](#track-c-downstream-rag-accuracy-sanitisation-overhead)
+- [Experimental Design and Evaluation](#experimental-design-and-evaluation)
+  - [Experimental Design](#experimental-design)
+     - [Track A: Memory Retrieval Attack Success Rate (ASR)](#track-a-memory-retrieval-attack-success-rate-asr)
+     - [Track B: Cross-Session Context Leakage](#track-b-cross-session-context-leakage)
+     - [Track C: Downstream RAG Accuracy (Sanitisation Overhead)](#track-c-downstream-rag-accuracy-sanitisation-overhead)
   - [Experiments Setup](#experiments-setup)
   - [Evaluation Metrics](#evaluation-metrics)
     - [Track A: Attack Success Rate (ASR)](#track-a-attack-success-rate-asr)
@@ -229,6 +230,8 @@ memorypoison_audit/
 - **`utils/llm_utils.py`** – Shared utilities for generating text, rewriting queries, and answering questions using a small LLM (flan‑t5‑small or distilgpt2 as fallback). It also includes a function to generate fake API keys for leakage experiments. The module handles Hugging Face authentication and device selection.
 
 ---
+
+## Experimental Design and Evaluation
 
 ### Experimental Design
 
